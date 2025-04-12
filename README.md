@@ -7,13 +7,13 @@ This project aims to apply machine learning techniques to a bibliographic datase
 Dataset Description
 The dataset consists of the following CSV files:
 
-authors.csv: Contains Author ID (unique identifier), Author Name, Author URL
-journal.csv: Contains Journal Name, Journal Publisher
-paper.csv: Contains Paper ID (unique identifier), Paper DOI, Paper Title, Paper Year, Paper URL, Paper Citation Count, Field of Study, Journal Volume, Journal Date
-topic.csv: Contains Topic ID, Topic Name, Topic URL
-paper_journal.csv: Contains Paper ID, Journal Name, Journal Publisher
-paper_topic.csv: Contains Paper ID, Topic ID
-paper_reference.csv: Contains Paper ID, Referenced Paper ID
+#authors.csv: Contains Author ID (unique identifier), Author Name, Author URL
+#journal.csv: Contains Journal Name, Journal Publisher
+#paper.csv: Contains Paper ID (unique identifier), Paper DOI, Paper Title, Paper Year, Paper URL, Paper Citation Count, Field of Study, Journal Volume, Journal Date
+#topic.csv: Contains Topic ID, Topic Name, Topic URL
+#paper_journal.csv: Contains Paper ID, Journal Name, Journal Publisher
+#paper_topic.csv: Contains Paper ID, Topic ID
+#paper_reference.csv: Contains Paper ID, Referenced Paper ID
 The dataset is available at GitHub Repository. You can learn more about the data and its extraction process in the following paper:
 
 Rothenberger, Liane, Muhammad Qasim Pasta, and Daniel Mayerhoffer.
