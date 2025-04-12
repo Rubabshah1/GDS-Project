@@ -38,7 +38,7 @@ The dataset is provided in CSV format and includes the following files:
 
 ---
 
-## 📂 Data Source
+## Data Source
 
 The dataset is available on the [GitHub Repository](https://github.com/Rubabshah1/GDS-Project](https://github.com/habib-university/cs343-project)).
 
