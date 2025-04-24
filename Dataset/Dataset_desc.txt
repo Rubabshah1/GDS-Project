@@ -1,9 +1,0 @@
-The dataset consists of the following CSV files:
-
-author.csv: Contains Author ID (unique identifier), Author Name, Author URL
-journal.csv: Contains Journal Name, Journal Publisher
-paper.csv: Contains Paper ID (unique identifier), Paper DOI, Paper Title, Paper Year, Paper URL, Paper Citation Count, Field of Study, Journal Volume, Journal Date
-topic.csv: Contains Topic ID, Topic Name, Topic URL
-paper_journal.csv: Contains Paper ID, Journal Name, Journal Publisher
-paper_topic.csv: Contains Paper ID, Topic ID
-paper_reference.csv: Contains Paper ID, Referenced Paper ID
