@@ -14,7 +14,7 @@ df["Paper ID"] = df["Paper ID"].astype(str).str.strip()
 
 # Clean string columns (updated with correct column names)
 string_cols = [
-    "Paper Title", 
+    "Paper DOI", "Paper Title", 
     "Fields of Study", "Journal Volume", "Journal Date"
 ]
 for col in string_cols:
@@ -27,8 +27,8 @@ df["Paper Year"] = pd.to_numeric(df["Paper Year"], errors="coerce")
 # Impute missing Citation Count as 0
 df["Paper Citation Count"] = pd.to_numeric(df["Paper Citation Count"], errors="coerce").fillna(0).astype(int)
 
-# Drop the 'Paper DOI' and 'Paper URL' columns as they are not needed
-df = df.drop(columns=["Paper DOI", "Paper URL"], errors='ignore')
+# Drop the 'Paper URL' column only
+df = df.drop(columns=["Paper URL"], errors='ignore')
 
 # Drop duplicate Paper IDs
 df = df.drop_duplicates(subset=["Paper ID"])
