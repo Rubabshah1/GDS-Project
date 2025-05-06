@@ -11,6 +11,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import recall_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score, roc_curve
 # end::imports[]
 
 # Neo4j connection
@@ -26,14 +27,14 @@ def prepare_paper_journal_data():
         result = session.run("""
             MATCH (y:Year)-[:PUBLISHED_IN_YEAR]-(p:Paper)-[:PUBLISHED_IN]->(j:Journal)
             WHERE toInteger(toString(y.year)) < 2015
-            RETURN id(p) AS paperId, id(j) AS journalId, 1 AS label
+            RETURN elementId(p) AS paperId, elementId(j) AS journalId, 1 AS label
         """)
         train_existing_links = pd.DataFrame([dict(record) for record in result])
 
         result = session.run("""
             MATCH (y:Year)-[:PUBLISHED_IN_YEAR]-(p:Paper)-[:PUBLISHED_IN]->(j:Journal)
             WHERE toInteger(toString(y.year)) >= 2015
-            RETURN id(p) AS paperId, id(j) AS journalId, 1 AS label
+            RETURN elementId(p) AS paperId, elementId(j) AS journalId, 1 AS label
         """)
         test_existing_links = pd.DataFrame([dict(record) for record in result])
 
@@ -41,22 +42,22 @@ def prepare_paper_journal_data():
         result = session.run("""
             MATCH (y:Year)-[:PUBLISHED_IN_YEAR]-(p:Paper)-[:HAS_TOPIC]->(t:Topic)<-[:HAS_TOPIC]-(p2:Paper)-[:PUBLISHED_IN]->(j:Journal)
             WHERE NOT (p)-[:PUBLISHED_IN]->(j) AND toInteger(toString(y.year)) < 2015
-            RETURN id(p) AS paperId, id(j) AS journalId, 0 AS label
+            RETURN elementId(p) AS paperId, elementId(j) AS journalId, 0 AS label
         """)
+        # result = session.run("""
+        #     MATCH (y:Year)-[:PUBLISHED_IN_YEAR]-(p:Paper)
+        #     MATCH (j:Journal)
+        #     MATCH path = (p)-[:PUBLISHED_IN*2..3]-(j)
+        #     WHERE NOT (p)-[:PUBLISHED_IN]->(j) AND toInteger(toString(y.year)) < 2015
+        #     RETURN DISTINCT p.id AS paperId, j.id AS journalId, 0 AS label
+        # """)
         train_missing_links = pd.DataFrame([dict(record) for record in result]).drop_duplicates()
 
         result = session.run("""
             MATCH (y:Year)-[:PUBLISHED_IN_YEAR]-(p:Paper)-[:HAS_TOPIC]->(t:Topic)<-[:HAS_TOPIC]-(p2:Paper)-[:PUBLISHED_IN]->(j:Journal)
             WHERE NOT (p)-[:PUBLISHED_IN]->(j) AND toInteger(toString(y.year)) >= 2015
-            RETURN id(p) AS paperId, id(j) AS journalId, 0 AS label
+            RETURN elementId(p) AS paperId, elementId(j) AS journalId, 0 AS label
         """)
-        # result = session.run("""
-        #     MATCH (y:Year)-[:PUBLISHED_IN_YEAR]-(p:Paper)
-        #     MATCH (j:Journal)
-        #     MATCH path = (p)-[:HAS_TOPIC|CITES|PUBLISHED_IN*2..3]-(j)
-        #     WHERE NOT (p)-[:PUBLISHED_IN]->(j) AND toInteger(toString(y.year)) < 2015
-        #     RETURN DISTINCT p.id AS paperId, j.id AS journalId, 0 AS label
-        # """)
         test_missing_links = pd.DataFrame([dict(record) for record in result]).drop_duplicates()
 
         # Combine and downsample
@@ -79,7 +80,7 @@ def apply_paper_journal_features(data, year_filter):
     # Create a subgraph projection for GDS
     with driver.session(database="neo4j") as session:
         session.run("""
-            CALL gds.graph.drop('paperJournalGraph', false)
+            CALL gds.graph.drop('paperJournalGraph')
         """)
         session.run("""
             CALL gds.graph.project(
@@ -88,44 +89,44 @@ def apply_paper_journal_features(data, year_filter):
                 {
                     HAS_TOPIC: {type: 'HAS_TOPIC', orientation: 'UNDIRECTED'},
                     WORKS_ON: {type: 'WORKS_ON', orientation: 'UNDIRECTED'},
-                    PUBLISHED_IN: {type: 'PUBLISHED_IN', orientation: 'UNDIRECTED'}
-                    // CITES: {type: 'CITES', orientation: 'UNDIRECTED'}
+                    PUBLISHED_IN: {type: 'PUBLISHED_IN', orientation: 'UNDIRECTED'},
+                    CITES: {type: 'CITES', orientation: 'UNDIRECTED'}
                 }
             )
         """)
         # Debug: Check graph projection
         result = session.run("CALL gds.graph.list('paperJournalGraph') YIELD nodeCount, relationshipCount")
-        graph_info = [dict(record) for record in result]
-        print("Graph Projection Info:", graph_info)
+        # graph_info = [dict(record) for record in result]
+        # print("Graph Projection Info:", graph_info)
 
         # Debug: Check relationships
-        result = session.run("""
-            MATCH ()-[:HAS_TOPIC|WORKS_ON|PUBLISHED_IN]-()
-            RETURN count(*) AS relCount
-        """)
-        rel_count = [dict(record) for record in result]
-        print("Relationship Count:", rel_count)
+        # result = session.run("""
+        #     MATCH ()-[:HAS_TOPIC|WORKS_ON|PUBLISHED_IN]-()
+        #     RETURN count(*) AS relCount
+        # """)
+        # rel_count = [dict(record) for record in result]
+        # print("Relationship Count:", rel_count)
 
         # Debug: Test GDS with sample nodes
-        result = session.run("""
-            MATCH (p:Paper), (j:Journal)
-            WHERE id(p) = 1 AND id(j) = 1
-            RETURN gds.alpha.linkprediction.adamicAdar(p, j, {relationshipQuery: 'HAS_TOPIC|WORKS_ON|PUBLISHED_IN'}) AS aa,
-                   gds.alpha.linkprediction.preferentialAttachment(p, j, {relationshipQuery: 'HAS_TOPIC|WORKS_ON|PUBLISHED_IN'}) AS pa,
-                   gds.alpha.linkprediction.commonNeighbors(p, j, {relationshipQuery: 'HAS_TOPIC|WORKS_ON|PUBLISHED_IN'}) AS cn
-        """)
-        gds_sample = [dict(record) for record in result]
-        print("Sample GDS Scores:", gds_sample)
+        # result = session.run("""
+        #     MATCH (p:Paper), (j:Journal)
+        #     WHERE elementId(p) = 1 AND elementId(j) = 1
+        #     RETURN gds.alpha.linkprediction.adamicAdar(p, j, {relationshipQuery: 'CITES|HAS_TOPIC|WORKS_ON|PUBLISHED_IN'}) AS aa,
+        #            gds.alpha.linkprediction.preferentialAttachment(p, j, {relationshipQuery: 'CITES|HAS_TOPIC|WORKS_ON|PUBLISHED_IN'}) AS pa,
+        #            gds.alpha.linkprediction.commonNeighbors(p, j, {relationshipQuery: 'CITES|HAS_TOPIC|WORKS_ON|PUBLISHED_IN'}) AS cn
+        # """)
+        # gds_sample = [dict(record) for record in result]
+        # print("Sample GDS Scores:", gds_sample)
 
     # Compute Adamic/Adar, Preferential Attachment, and Common Neighbors using GDS
     query_graph_features = """
     UNWIND $pairs AS pair
-    MATCH (p:Paper), (j:Journal) WHERE id(p) = pair.paperId and id(j) = pair.journalId
+    MATCH (p:Paper), (j:Journal) WHERE elementId(p) = pair.paperId and elementId(j) = pair.journalId
     RETURN pair.paperId AS paperId,
            pair.journalId AS journalId,
-           gds.alpha.linkprediction.adamicAdar(p, j, {relationshipQuery: 'PUBLISHED_IN'}) AS aa,
-           gds.alpha.linkprediction.preferentialAttachment(p, j, {relationshipQuery: 'PUBLISHED_IN'}) AS pa,
-           gds.alpha.linkprediction.commonNeighbors(p, j, {relationshipQuery: 'PUBLISHED_IN'}) AS cn
+           gds.alpha.linkprediction.adamicAdar(p, j) AS aa,
+           gds.alpha.linkprediction.preferentialAttachment(p, j) AS pa,
+           gds.alpha.linkprediction.commonNeighbors(p, j) AS cn
     """
     pairs = [{"paperId": row['paperId'], "journalId": row['journalId']} for _, row in data.iterrows()]
     with driver.session(database="neo4j") as session:
@@ -136,16 +137,16 @@ def apply_paper_journal_features(data, year_filter):
     # Compute Topic Overlap, Field of Study Match, and Journal Popularity
     query_additional_features = """
     UNWIND $pairs AS pair
-    MATCH (p:Paper) WHERE id(p) = pair.paperId
-    MATCH (j:Journal) WHERE id(j) = pair.journalId
+    MATCH (p:Paper) WHERE elementId(p) = pair.paperId
+    MATCH (j:Journal) WHERE elementId(j) = pair.journalId
     WITH pair, p, j
     OPTIONAL MATCH (p)-[:HAS_TOPIC]->(t:Topic)<-[:HAS_TOPIC]-(p2:Paper)-[:PUBLISHED_IN]->(j)
     WITH pair, p, j, count(DISTINCT t) AS topicOverlap
     OPTIONAL MATCH (p)-[:WORKS_ON]->(f:Field_of_study)<-[:WORKS_ON]-(p2:Paper)-[:PUBLISHED_IN]->(j)
-    WITH pair, p, j, topicOverlap, count(DISTINCT f) AS fieldOfStudyMatch
+    WITH pair, p, j, topicOverlap, count(DISTINCT f) AS field_match
     MATCH (j)<-[:PUBLISHED_IN]-(p2:Paper)
     RETURN pair.paperId AS paperId, pair.journalId AS journalId,
-           topicOverlap, fieldOfStudyMatch, count(p2) AS journalPopularity
+           topicOverlap, field_match, count(p2) AS journalPopularity
     """
     with driver.session(database="neo4j") as session:
         result = session.run(query_additional_features, {"pairs": pairs})
@@ -155,48 +156,37 @@ def apply_paper_journal_features(data, year_filter):
     features = pd.merge(graph_features, additional_features, on=["paperId", "journalId"], how='left')
     return pd.merge(data, features, on=["paperId", "journalId"])
 
-# Section 3: Training and Evaluation
-# Prepare data and compute features
-df_train, df_test = prepare_paper_journal_data()
-df_train = apply_paper_journal_features(df_train, "before_2015")
-df_test = apply_paper_journal_features(df_test, "2015_and_later")
-
-# Save the feature-engineered datasets
-df_train.to_csv("Link Prediction/df_train_under_paper_journal.csv", index=False)
-df_test.to_csv("Link Prediction/df_test_under_paper_journal.csv", index=False)
-
-# Display sample data
-print("Training Data Sample:")
-print(df_train.sample(5))
-print("\nTest Data Sample:")
-print(df_test.sample(5))
-
-# Create the random forest classifier
-# tag::create-classifier[]
-classifier = RandomForestClassifier(n_estimators=30, max_depth=10, random_state=0)
+# classifier = RandomForestClassifier(n_estimators=30, max_depth=10, random_state=0)
 # end::create-classifier[]
 
-# Train the model
-# tag::train-model[]
-columns = [
-    "aa", "pa", "cn",  # graph-based features
-    "topicOverlap", "fieldOfStudyMatch", "journalPopularity"  # additional features
-]
-
-X = df_train[columns]
-y = df_train["label"]
-classifier.fit(X, y)
-# end::train-model[]
-
-# Evaluate the model
-# tag::evaluation-functions[]
-def evaluate_model(predictions, actual):
-    return pd.DataFrame({
+def evaluate_model(y_true, y_pred, y_prob=None):
+    metrics = {
         "Measure": ["Accuracy", "Precision", "Recall"],
-        "Score": [accuracy_score(actual, predictions), 
-                  precision_score(actual, predictions), 
-                  recall_score(actual, predictions)]
-    })
+        "Score": [
+            accuracy_score(y_true, y_pred),
+            precision_score(y_true, y_pred),
+            recall_score(y_true, y_pred)
+        ]
+    }
+    
+    if y_prob is not None:
+        metrics["Measure"].append("AUC-ROC")
+        metrics["Score"].append(roc_auc_score(y_true, y_prob))
+    
+    return pd.DataFrame(metrics)
+
+def plot_roc_curve(y_true, y_prob):
+    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) Curve')
+    plt.legend(loc="lower right")
+    plt.show()
 
 def feature_importance(columns, classifier):        
     print("Feature Importance")
@@ -211,53 +201,45 @@ def feature_importance(columns, classifier):
     plt.show()
 # end::evaluation-functions[]
 
-# Test the model
-# tag::test-model[]
-predictions = classifier.predict(df_test[columns])
-y_test = df_test["label"]
-
-eval_result = evaluate_model(predictions, y_test)
-print("\nModel Evaluation:")
-print(eval_result)
-# end::test-model[]
-
-# Save evaluation results
-eval_result.to_csv("Link Prediction/model-eval-paper-journal.csv", index=False)
-
-# Display feature importance
-feature_importance(columns, classifier)
-
-# Section 4: Predict New Links
-def predict_links(paper_journal_pairs):
-    # Prepare new data with the same features
-    new_data = pd.DataFrame(paper_journal_pairs, columns=['paperId', 'journalId', 'label'])
-    new_data = apply_paper_journal_features(new_data, "before_2015")
+# Main execution
+if __name__ == "__main__":
     
-    # Predict probabilities
-    X_new = new_data[columns]
-    probabilities = classifier.predict_proba(X_new)[:, 1]  # Probability of class 1 (link exists)
-    predictions = classifier.predict(X_new)  # Binary prediction (0 or 1)
+    # Section 3: Training and Evaluation
+    # Prepare data and compute features
+    # Prepare data
+    train_df, test_df = prepare_paper_journal_data()
+    train_features = apply_paper_journal_features(train_df, "before_2015")
+    test_features = apply_paper_journal_features(test_df, "2015_and_later")
+
+    # Save the feature-engineered datasets
+    train_features.to_csv("Link Prediction/df_train_under_paper_journal.csv", index=False)
+    test_features.to_csv("Link Prediction/df_test_under_paper_journal.csv", index=False)
+    # Feature engineering
     
-    # Combine results
-    new_data['probability'] = probabilities
-    new_data['predicted_link'] = predictions
-    return new_data[['paperId', 'journalId', 'probability', 'predicted_link']]
-
-# Example usage: Check predicted links for new paper-journal pairs
-new_paper_journal_pairs = [
-    {'paperId': 1, 'journalId': 1, 'label': 0},
-    {'paperId': 2, 'journalId': 2, 'label': 0}
-]
-# predicted_links = predict_links(new_paper_journal_pairs)
-# print("\nNumber of Predicted Links:", len(predicted_links))
-# print("Predicted Links with Probabilities:")
-# print(predicted_links)
-
-# Clean up GDS projection
-with driver.session(database="neo4j") as session:
-    session.run("""
-        CALL gds.graph.drop('paperJournalGraph', false)
-    """)
-
-# Close Neo4j driver
-driver.close()
+    # Define feature columns
+    feature_cols = [
+        'aa',
+        'cn',
+        'pa',
+        'topicOverlap',
+        'field_match',
+        'journalPopularity'
+    ]
+    
+    # Train model
+    clf = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42)
+    clf.fit(train_features[feature_cols], train_features['label'])
+    
+    # Evaluate
+    test_pred = clf.predict(test_features[feature_cols])
+    test_prob = clf.predict_proba(test_features[feature_cols])[:, 1]
+    
+    print("Model Evaluation:")
+    print(evaluate_model(test_features['label'], test_pred, test_prob))
+    
+    # Visualizations
+    plot_roc_curve(test_features['label'], test_prob)
+    feature_importance(feature_cols, clf)
+    
+    # Clean up
+    driver.close()
