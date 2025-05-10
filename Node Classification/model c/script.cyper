@@ -1,0 +1,72 @@
+// model5 queries
+
+MATCH(p:Paper)-[:HAS_FIELD]->(f)
+WITH p , collect(f.name) AS fields
+SET p.is_medicine = toInteger('medicine' IN fields)
+RETURN count(p), p.is_medicine;
+
+MATCH (j:Journal)<-[:PUBLISHED_IN]-(p:Paper)-[:HAS_FIELD]->(f:Field)
+WITH j, collect(f.name) AS fields, count(p) AS paperCount
+SET j.is_medicine = toInteger('medicine' IN fields AND paperCount > 70)
+RETURN j.name AS journal, j.is_medicine, paperCount
+ORDER BY paperCount DESC;
+
+
+MATCH (j:Journal)<-[:PUBLISHED_IN]-(p:Paper)
+OPTIONAL MATCH (p)-[:CITES]->(c:Paper)-[:HAS_FIELD]->(f:Field)
+WHERE 'medicine' IN f.name  // Only count citations to "medicine" papers
+WITH j, count(c) AS medicalCitationCount
+SET j.medicalCitationCount = medicalCitationCount  // Set the count as a property on the Journal node
+RETURN j.name AS journal, j.medicalCitationCount
+ORDER BY j.medicalCitationCount DESC;
+
+
+MATCH (p:Paper)-[:HAS_FIELD]->(f:Field)
+WHERE 'medicine' IN f.name  // Filter papers with the "medicine" field
+MATCH (p)-[:HAS_TOPIC]->(t:Topic)  // Find topics related to these papers
+RETURN t.name AS topic, count(DISTINCT p) AS topicCount
+ORDER BY topicCount DESC;
+
+
+// // Find topics for papers without the "medicine" field
+// MATCH (p:Paper)-[:HAS_FIELD]->(f:Field)
+// WHERE NOT 'medicine' IN f.name  // Papers without "medicine" field
+// MATCH (p)-[:HAS_TOPIC]->(t:Topic)
+// WITH t, medicineTopicCount, count(DISTINCT p) AS nonMedicineTopicCount
+// WHERE medicineTopicCount > nonMedicineTopicCount  // Filter out topics common in non-medicine papers
+// RETURN t.name AS topic, medicineTopicCount, nonMedicineTopicCount
+// ORDER BY medicineTopicCount DESC, nonMedicineTopicCount ASC;
+
+
+MATCH (j:Journal)<-[:PUBLISHED_IN]-(p:Paper)-[:HAS_TOPIC]->(t:Topic)
+WITH j, 
+     sum(CASE WHEN t.name = 'Experience' THEN 1 ELSE 0 END) AS ExperienceCount,
+     sum(CASE WHEN t.name = 'Depressive Disorder' THEN 1 ELSE 0 END) AS DepressiveDisorderCount,
+     sum(CASE WHEN t.name = 'Mental Disorders' THEN 1 ELSE 0 END) AS MentalDisordersCount,
+     sum(CASE WHEN t.name = 'Community' THEN 1 ELSE 0 END) AS CommunityCount,
+     sum(CASE WHEN t.name = 'Attitude' THEN 1 ELSE 0 END) AS AttitudeCount,
+     sum(CASE WHEN t.name = 'Mental Association' THEN 1 ELSE 0 END) AS MentalAssociationCount,
+     sum(CASE WHEN t.name = 'Patients' THEN 1 ELSE 0 END) AS PatientsCount,
+     sum(CASE WHEN t.name = 'Adolescent (age Group)' THEN 1 ELSE 0 END) AS AdolescentCount
+WITH j, 
+     CASE WHEN ExperienceCount > 10 THEN 1 ELSE 0 END AS Experience,
+     CASE WHEN DepressiveDisorderCount > 10 THEN 1 ELSE 0 END AS DepressiveDisorder,
+     CASE WHEN MentalDisordersCount > 10 THEN 1 ELSE 0 END AS MentalDisorders,
+     CASE WHEN CommunityCount > 10 THEN 1 ELSE 0 END AS Community,
+     CASE WHEN AttitudeCount > 10 THEN 1 ELSE 0 END AS Attitude,
+     CASE WHEN MentalAssociationCount > 10 THEN 1 ELSE 0 END AS MentalAssociation,
+     CASE WHEN PatientsCount > 10 THEN 1 ELSE 0 END AS Patients,
+     CASE WHEN AdolescentCount > 10 THEN 1 ELSE 0 END AS Adolescent
+SET j.Experience = Experience,
+    j.DepressiveDisorder = DepressiveDisorder,
+    j.MentalDisorders = MentalDisorders,
+    j.Community = Community,
+    j.Attitude = Attitude,
+    j.MentalAssociation = MentalAssociation,
+    j.Patients = Patients,
+    j.Adolescent = Adolescent
+RETURN j.name AS journal, j.Experience, j.DepressiveDisorder, j.MentalDisorders, j.Community, j.Attitude, j.MentalAssociation, j.Patients, j.Adolescent
+ORDER BY j.name;
+
+
+match(j:Journal) where j.is_medicine=1 return j.Adolescent, j.Attitude, j.Community, j.DepressiveDisorder, j.Experience, j.MentalAssociation, j.MentalDisorders, j.Patients;
