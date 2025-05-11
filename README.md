@@ -1,52 +1,114 @@
 # GDS-Project-Spring-2025
-CS343 Graph Data Science Project: Node Classification and Link Prediction in Bibliographic Data
 
-## Overview
-This project aims to apply machine learning techniques to a bibliographic dataset using graph-based approaches. You will work in groups of up to four members. Each group must be divided into two sub-groups: one will be responsible for the node classification task, while the other will work on the link prediction task. The dataset is provided in CSV format, and students will need to clean, preprocess, and construct a graph to train models using Neo4j or Python-based machine learning frameworks integrated with Neo4j. The data cleaning, preprocessing, and graph construction should be common for both sub-groups.
-
-## Dataset Description
-
-The dataset is provided in CSV format and includes the following files:
-
-- **`authors.csv`**  
-  Contains:  
-  `Author ID`, `Author Name`, `Author URL`
-
-- **`journal.csv`**  
-  Contains:  
-  `Journal Name`, `Journal Publisher`
-
-- **`paper.csv`**  
-  Contains:  
-  `Paper ID`, `Paper DOI`, `Paper Title`, `Paper Year`, `Paper URL`, `Paper Citation Count`, `Field of Study`, `Journal Volume`, `Journal Date`
-
-- **`topic.csv`**  
-  Contains:  
-  `Topic ID`, `Topic Name`, `Topic URL`
-
-- **`paper_journal.csv`**  
-  Contains:  
-  `Paper ID`, `Journal Name`, `Journal Publisher`
-
-- **`paper_topic.csv`**  
-  Contains:  
-  `Paper ID`, `Topic ID`
-
-- **`paper_reference.csv`**  
-  Contains:  
-  `Paper ID`, `Referenced Paper ID`
+**CS343 Graph Data Science Project: Node Classification and Link Prediction in Bibliographic Data**
 
 ---
 
-## Data Source
+## Overview
 
-The dataset is available on the [GitHub Repository](https://github.com/Rubabshah1/GDS-Project](https://github.com/habib-university/cs343-project)).
+This project applies machine learning techniques to a bibliographic dataset using graph-based approaches. The project is divided into two parts:
 
+* **Node Classification**: Predict node labels (e.g., fields of study or publication types).
+* **Link Prediction**: Predict future or missing connections between papers (e.g., citations).
 
-More details about the dataset and its extraction process can be found in the following paper:
+Graph construction, preprocessing, and cleaning are **shared** between both subgroups.
 
-> Rothenberger, Liane, Muhammad Qasim Pasta, and Daniel Mayerhoffer.  
-> "Mapping and impact assessment of phenomenon-oriented research fields: The example of migration research."  
-> *Quantitative Science Studies* 2, no. 4 (2021): 1466-1485.
+---
+
+## 📂 Dataset Description
+
+The dataset is provided in CSV format and includes:
+
+* `authors.csv`: Author ID, Name, URL
+* `journal.csv`: Journal Name, Publisher
+* `paper.csv`: Paper metadata: ID, DOI, Title, Year, Citation Count, etc.
+* `topic.csv`: Topic ID, Name, URL
+* `paper_journal.csv`: Mapping between papers and journals
+* `paper_topic.csv`: Mapping between papers and topics
+* `paper_reference.csv`: Citation links (Paper ID → Referenced Paper ID)
+
+### 📖 Source
+
+Rothenberger, Liane, et al.
+*"Mapping and impact assessment of phenomenon-oriented research fields: The example of migration research."*
+Quantitative Science Studies 2, no. 4 (2021): 1466–1485.
+
+---
+
+##  Reproducing the Results
+
+Follow the steps below to reproduce the graph-based models:
+
+---
+
+### 1. Data Loading and Preprocessing
+
+The Dataset_cleand folder contains all the cleaned csv and a file named loading.cypher for loading all data on neo4j and making relationships.
+
+**File**: `loading.cypher`
+
+* Use these Cypher queries to import CSV files into Neo4j.
+
+```bash
+# Run this in Neo4j Browser or via Python driver
+:source loading.cypher
+```
+
+**Cleaning Scripts**: Located in `Extras_Cleaning codes/`
+
+* Handles missing values, inconsistent formats, and irrelevant entries.
+* Outputs cleaned versions saved in `Dataset_Cleaned/`.
+
+---
+
+### 2. 🔗 Graph Construction
+
+* Nodes: Authors, Papers, Topics, Journals
+* Relationships:
+
+  * `(:Paper)-[:CITES]->(:Paper)`
+  * `(:Paper)-[:HAS_TOPIC]->(:Topic)`
+  * `(:Paper)-[:PUBLISHED_IN]->(:Journal)`
+  * `(:Author)-[:WROTE]->(:Paper)`
+  * `(:Paper)-[:PUBLISHED_IN_YEAR]->(:YEAR)`
+  * `(:Paper)-[:WORKS_ON]->(:Field_of_study)`
+
+Graph construction is done via Neo4j and Cypher using cleaned data.
+
+---
+
+### 3. Model Training
+
+* **Node Classification**
+
+  * Directory: `Node Classification/`
+  * Uses GNN-based models (e.g., GraphSAGE, GCN) to classify paper nodes.
+
+* **Link Prediction**
+
+  * Directory: `Link Prediction/`
+  * Models trained to predict potential citation links.
+
+Both tasks are run using Python with Neo4j integration via `neo4j` driver.
+
+---
+
+## Directory Structure
+
+```bash
+GDS-Project-Spring-2025/
+│
+├── Dataset_Original/           # Raw CSV files
+├── Dataset_Cleaned/            # Preprocessed data
+  ├── loading.cypher              # Cypher queries to load data into Neo4j
+├── Extras_Cleaning codes/      # Python script for cleaning
+│
+├── Node Classification/        # Models, code, and results
+├── Link Prediction/            # Models, code, and results
+│
+└── README.md                   # This file
+```
+
+---
 
 
