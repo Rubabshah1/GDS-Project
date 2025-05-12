@@ -70,6 +70,7 @@ The Dataset_cleand folder contains all the cleaned csv and a file named loading.
   * `(:Paper)-[:HAS_TOPIC]->(:Topic)`
   * `(:Paper)-[:PUBLISHED_IN]->(:Journal)`
   * `(:Author)-[:AUTHORED]->(:Paper)`
+  * `(:Author)-[:CO_AUTHOR]->(:AUTHOR)`
   * `(:Paper)-[:PUBLISHED_IN_YEAR]->(:YEAR)`
   * `(:Paper)-[:WORKS_ON]->(:Field_of_study)`
 
