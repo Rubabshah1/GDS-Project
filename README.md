@@ -83,15 +83,14 @@ Graph construction is done via Neo4j and Cypher using cleaned data.
 * **Node Classification**
 
   * Directory: `Node Classification/`
-  * Uses GNN-based models (e.g., GraphSAGE, GCN) to classify paper nodes.
+  * Uses Classifier models (e.g., RandomForest, HistGradientBoosting) to classify paper nodes.
 
 * **Link Prediction**
 
   * Directory: `Link Prediction/`
-  * Models trained to predict potential citation links.
+  * Models trained to predict potential published links (RandomForest, LogisticRegression, GradientBoosting).
 
-Both tasks are run using Python with Neo4j integration via `neo4j` driver.
-
+Both tasks are run using Python with Neo4j integration via `neo4j` driver. 
 ---
 
 ## Directory Structure
